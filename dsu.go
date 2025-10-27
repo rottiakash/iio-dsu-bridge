@@ -248,13 +248,20 @@ func (s *DSUServer) Broadcast(sample IMUSample) {
 // ---------- packet builders ----------
 
 func (s *DSUServer) buildPacket(msgType uint32, payload []byte) []byte {
-    // header: 20 bytes
+    // Citron/Yuzu expects payload_length = sizeof(Type) + sizeof(Data)
+    // Type in protocol is u32 (4 bytes).
+    const typeSize = 4
+
+	payloadLenForHeader := len(payload) + typeSize
+	
     total := 20 + len(payload)
     out := make([]byte, total)
+	// Header
     copy(out[0:4], []byte(dsuMagicServer))
     binary.LittleEndian.PutUint16(out[4:6], dsuProtoVersion)
-    binary.LittleEndian.PutUint16(out[6:8], uint16(len(payload)))
-    // CRC leave zero for now
+    binary.LittleEndian.PutUint16(out[6:8], uint16(payloadLenForHeader))
+    
+	// CRC leave zero for now
     binary.LittleEndian.PutUint32(out[12:16], s.serverID)
     binary.LittleEndian.PutUint32(out[16:20], msgType)
     copy(out[20:], payload)
@@ -263,7 +270,8 @@ func (s *DSUServer) buildPacket(msgType uint32, payload []byte) []byte {
     out[8], out[9], out[10], out[11] = 0, 0, 0, 0
     crc := crc32.ChecksumIEEE(out)
     binary.LittleEndian.PutUint32(out[8:12], crc)
-    return out
+    
+	return out
 }
 
 // Shared beginning (11 bytes): slot, state, model, connection, MAC(6), battery
@@ -272,7 +280,7 @@ func sharedBeginning(slot uint8, state uint8) []byte {
 	b[0] = slot
 	b[1] = state         // 0=not connected, 1=reserved?, 2=connected
 	b[2] = 2             // device model: full gyro
-	b[3] = 0             // connection: 1=USB, 2=BT, 0=NA
+	b[3] = 1             // connection: 1=USB, 2=BT, 0=NA
 	// MAC 6 bytes
 	copy(b[4:10], dsuMAC[:])
 	b[10] = 0x05         // battery: "Full (or almost)" (cosmético)
@@ -283,8 +291,14 @@ func sharedBeginning(slot uint8, state uint8) []byte {
 // Payload: 11 bytes shared beginning + 1 zero byte
 func (s *DSUServer) buildControllerInfo(slot uint8, state uint8) []byte {
 	p := make([]byte, 12)
+	// info bytes
 	copy(p[0:11], sharedBeginning(slot, state))
-	p[11] = 0 // required trailing zero
+	// byte 11: is_pad_active
+    if state == 2 {
+        p[11] = 1 // active
+    } else {
+        p[11] = 0 // inactive
+    }
 	return s.buildPacket(dsuMsgInfo, p)
 }
 
