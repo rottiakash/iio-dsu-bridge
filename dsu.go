@@ -272,7 +272,7 @@ func sharedBeginning(slot uint8, state uint8) []byte {
 	b[0] = slot
 	b[1] = state         // 0=not connected, 1=reserved?, 2=connected
 	b[2] = 2             // device model: full gyro
-	b[3] = 0             // connection: 1=USB, 2=BT, 0=NA
+	b[3] = 1             // connection: 1=USB, 2=BT, 0=NA
 	// MAC 6 bytes
 	copy(b[4:10], dsuMAC[:])
 	b[10] = 0x05         // battery: "Full (or almost)" (cosmético)
@@ -283,8 +283,14 @@ func sharedBeginning(slot uint8, state uint8) []byte {
 // Payload: 11 bytes shared beginning + 1 zero byte
 func (s *DSUServer) buildControllerInfo(slot uint8, state uint8) []byte {
 	p := make([]byte, 12)
+	// info bytes
 	copy(p[0:11], sharedBeginning(slot, state))
-	p[11] = 0 // required trailing zero
+	// byte 11: is_pad_active
+    if state == 2 {
+        p[11] = 1 // active
+    } else {
+        p[11] = 0 // inactive
+    }
 	return s.buildPacket(dsuMsgInfo, p)
 }
 
