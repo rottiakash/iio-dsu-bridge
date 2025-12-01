@@ -15,8 +15,8 @@ BIN_DIR="$HOME/.local/bin"
 BIN_PATH="$BIN_DIR/iio-dsu-bridge"
 SERVICE_FILE="$HOME/.config/systemd/user/${SERVICE_NAME}.service"
 
-# TODO: replace with your actual asset URL before publishing
-BIN_URL="https://github.com/Sebalvarez97/iio-dsu-bridge/releases/latest/download/iio-dsu-bridge"
+# Hosted release asset for this fork
+BIN_URL="https://github.com/rottiakash/iio-dsu-bridge/releases/latest/download/iio-dsu-bridge"
 
 echo "==> Creating required folders..."
 mkdir -p "$BIN_DIR"
